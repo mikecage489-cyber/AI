@@ -6,7 +6,7 @@ import { getUserFromToken } from '@/lib/auth';
 // GET /api/portals/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -20,8 +20,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const portal = await prisma.portal.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         credentials: {
           select: {
@@ -54,7 +56,7 @@ export async function GET(
 // PUT /api/portals/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -67,6 +69,8 @@ export async function PUT(
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    const { id } = await params;
 
     const body = await request.json();
     const {
@@ -84,7 +88,7 @@ export async function PUT(
 
     // Update portal
     const portal = await prisma.portal.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(name && { name }),
         ...(loginUrl !== undefined && { loginUrl }),
@@ -104,7 +108,7 @@ export async function PUT(
 
       // Delete existing credentials
       await prisma.portalCredential.deleteMany({
-        where: { portalId: params.id },
+        where: { portalId: id },
       });
 
       // Create new credentials
@@ -132,7 +136,7 @@ export async function PUT(
 // DELETE /api/portals/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -146,8 +150,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const { id } = await params;
+
     await prisma.portal.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

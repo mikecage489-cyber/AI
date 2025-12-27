@@ -5,7 +5,7 @@ import { getUserFromToken } from '@/lib/auth';
 // GET /api/bids/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -19,8 +19,10 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const bid = await prisma.bid.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         portal: {
           select: {

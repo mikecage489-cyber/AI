@@ -6,7 +6,7 @@ import { addScrapeJob } from '@/lib/queue';
 // POST /api/portals/[id]/scrape
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -20,9 +20,11 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = await params;
+
     // Check if portal exists
     const portal = await prisma.portal.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!portal) {
@@ -39,7 +41,7 @@ export async function POST(
     // Create scrape job
     const job = await prisma.scrapeJob.create({
       data: {
-        portalId: params.id,
+        portalId: id,
         status: 'PENDING',
         jobType: 'MANUAL',
       },
@@ -47,7 +49,7 @@ export async function POST(
 
     // Add to queue
     await addScrapeJob({
-      portalId: params.id,
+      portalId: id,
       jobId: job.id,
       jobType: 'manual',
     });

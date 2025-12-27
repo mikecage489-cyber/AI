@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 
@@ -32,7 +32,9 @@ export async function verifyPassword(
  * Generate a JWT token
  */
 export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, JWT_SECRET, { 
+    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
+  });
 }
 
 /**
