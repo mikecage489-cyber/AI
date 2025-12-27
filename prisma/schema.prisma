@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User authentication and authorization
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // bcrypt hashed
+  name      String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+// Portal configurations
+model Portal {
+  id          String   @id @default(cuid())
+  name        String
+  loginUrl    String?
+  listingUrl  String
+  description String?
+  isActive    Boolean  @default(true)
+  portalType  PortalType @default(PUBLIC)
+  
+  // Field mapping configuration (JSON)
+  fieldMapping Json?
+  
+  // Scraping settings
+  scraperConfig Json? // Store portal-specific scraping rules
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  credentials PortalCredential[]
+  bids        Bid[]
+  scrapeJobs  ScrapeJob[]
+
+  @@map("portals")
+}
+
+enum PortalType {
+  PUBLIC
+  LOGIN_REQUIRED
+}
+
+// Encrypted credentials for portals
+model PortalCredential {
+  id              String   @id @default(cuid())
+  portalId        String
+  portal          Portal   @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  
+  // Encrypted username and password
+  encryptedUsername String
+  encryptedPassword String
+  
+  // IV for AES-256-GCM
+  iv              String
+  authTag         String
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("portal_credentials")
+}
+
+// Normalized bid data
+model Bid {
+  id                String    @id @default(cuid())
+  portalId          String
+  portal            Portal    @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  
+  // Normalized fields
+  requisitionNumber String?
+  bidNumber         String?
+  solicitationNumber String?
+  
+  title             String
+  description       String?
+  summary           String?
+  
+  openDate          DateTime?
+  closeDate         DateTime?
+  
+  quantity          String?
+  unitOfMeasure     String?
+  
+  detailPageUrl     String?
+  
+  // Original data (JSON) for reference
+  rawData           Json?
+  
+  // Status
+  status            BidStatus @default(ACTIVE)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([portalId])
+  @@index([openDate])
+  @@index([closeDate])
+  @@index([status])
+  @@map("bids")
+}
+
+enum BidStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+// Scrape job queue and status
+model ScrapeJob {
+  id          String      @id @default(cuid())
+  portalId    String
+  portal      Portal      @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  
+  status      JobStatus   @default(PENDING)
+  jobType     JobType     @default(MANUAL)
+  
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Results
+  bidsFound   Int         @default(0)
+  bidsAdded   Int         @default(0)
+  errors      Int         @default(0)
+  
+  errorMessage String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  logs        ScrapeLog[]
+
+  @@index([portalId])
+  @@index([status])
+  @@map("scrape_jobs")
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum JobType {
+  MANUAL
+  SCHEDULED
+}
+
+// Detailed logs per scrape operation
+model ScrapeLog {
+  id          String     @id @default(cuid())
+  jobId       String
+  job         ScrapeJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  level       LogLevel
+  message     String
+  metadata    Json?
+  
+  createdAt   DateTime   @default(now())
+
+  @@index([jobId])
+  @@index([level])
+  @@map("scrape_logs")
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}
+
+// Export job tracking
+model Export {
+  id          String       @id @default(cuid())
+  userId      String?
+  
+  format      ExportFormat
+  filename    String
+  filePath    String?
+  
+  // Filter criteria used
+  filters     Json?
+  
+  status      ExportStatus @default(PENDING)
+  recordCount Int          @default(0)
+  
+  createdAt   DateTime     @default(now())
+  completedAt DateTime?
+
+  @@index([status])
+  @@map("exports")
+}
+
+enum ExportFormat {
+  CSV
+  EXCEL
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
