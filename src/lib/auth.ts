@@ -1,4 +1,4 @@
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 
@@ -50,7 +50,7 @@ export function verifyToken(token: string): JWTPayload {
 export async function authenticateUser(
   email: string,
   password: string
-): Promise<{ user: any; token: string } | null> {
+): Promise<{ user: { id: string; email: string; name: string | null; role: string }; token: string } | null> {
   const user = await prisma.user.findUnique({
     where: { email },
   });

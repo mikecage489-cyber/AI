@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const { format = 'CSV', filters = {} } = body;
 
     // Build where clause from filters
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
     if (filters.portalId) where.portalId = filters.portalId;
     if (filters.status) where.status = filters.status;
